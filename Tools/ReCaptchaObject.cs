@@ -11,30 +11,22 @@ namespace Akumu.Antigate.Tools
     /// </summary>
     public class ReCaptchaObject
     {
-        private string _Challenge;
-
         /// <summary>
         /// Значение поля recaptcha_challenge_field
         ///             Используется для отправки капчи
         /// 
         /// </summary>
-        public string Challenge
-        {
-            get { return _Challenge; }
-        }
+        private string Challenge { get; }
 
         /// <summary>
         /// URL изображения
         /// 
         /// </summary>
-        public string ImageURL
-        {
-            get { return string.Format("http://www.google.com/recaptcha/api/image?c={0}", (object) _Challenge); }
-        }
+        private string ImageURL => $"http://www.google.com/recaptcha/api/image?c={Challenge as object}";
 
         public ReCaptchaObject(string Chall)
         {
-            _Challenge = Chall;
+            Challenge = Chall;
         }
 
         /// <summary>
@@ -43,7 +35,7 @@ namespace Akumu.Antigate.Tools
         /// </summary>
         /// 
         /// <returns/>
-        public byte[] ImageData()
+        private byte[] ImageData()
         {
             using (var webClient = new WebClient())
                 return webClient.DownloadData(ImageURL);
@@ -58,7 +50,7 @@ namespace Akumu.Antigate.Tools
         public Image ImageObject()
         {
             using (var memoryStream = new MemoryStream(ImageData()))
-                return Image.FromStream((Stream) memoryStream);
+                return Image.FromStream(memoryStream);
         }
     }
 }

@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
@@ -19,39 +18,39 @@ namespace Akumu.Antigate
         /// Set/Get Задержка проверки готовности капчи. Стандартно: 15000. (15 сек.)
         /// 
         /// </summary>
-        public int CheckDelay = 15000;
+        private const int CheckDelay = 15000;
 
         /// <summary>
         /// Set/Get Кол-во попыток проверки готовности капчи. Стандартно: 30
         /// 
         /// </summary>
-        public int CheckRetryCount = 30;
+        private const int CheckRetryCount = 30;
 
         /// <summary>
         /// Set/Get кол-во попыток получения нового слота. Стандартно: 3
         /// 
         /// </summary>
-        public int SlotRetry = 3;
+        private const int SlotRetry = 3;
 
         /// <summary>
         /// Set/Get Задержка повторной попытки получения слота на Antigate. Стандартно: 1000
         /// 
         /// </summary>
-        public int SlotRetryDelay = 1000;
+        private const int SlotRetryDelay = 1000;
 
         /// <summary>
         /// Сервис антикапчи. Стандартно: antigate.com
         /// 
         /// </summary>
-        public string ServiceProvider = "antigate.com";
+        private const string ServiceProvider = "antigate.com";
 
-        private string Key;
+        private readonly string Key;
 
         /// <summary>
         /// Коллекция дополнительных параметров для API запросов.
         /// 
         /// </summary>
-        public ParamsContainer Parameters;
+        private readonly ParamsContainer Parameters;
 
         private string CaptchaId;
 
@@ -112,7 +111,7 @@ namespace Akumu.Antigate
             byte[] ImageData;
             using (var memoryStream = new MemoryStream())
             {
-                Img.Save((Stream) memoryStream, ImageFormat.Png);
+                Img.Save(memoryStream, ImageFormat.Png);
                 ImageData = memoryStream.ToArray();
             }
             return GetAnswer(ImageData);
@@ -126,125 +125,118 @@ namespace Akumu.Antigate
         /// <returns>
         /// Разгаданный текст капчи или [null] в случае отсутствия свободных слотов или превышения времени ожидания
         /// </returns>
-        public string GetAnswer(byte[] ImageData)
+        private string GetAnswer(byte[] ImageData)
         {
             if (ImageData == null || ImageData.Length == 0)
                 throw new ArgumentException("Image data array is empty");
             var num = SlotRetry;
-            CaptchaId = (string) null;
+            CaptchaId = null;
+            string str;
+            while (true)
+            {
+                var httpWebRequest =
+                    (HttpWebRequest) WebRequest.Create($"http://{ServiceProvider}/in.php");
+                httpWebRequest.UserAgent = "Antigate.NET";
+                httpWebRequest.Accept = "*/*";
+                httpWebRequest.Headers.Add("Accept-Language", "ru");
+                httpWebRequest.KeepAlive = true;
+                httpWebRequest.AllowAutoRedirect = false;
+                httpWebRequest.Method = "POST";
+                var Boundary = DateTime.Now.Ticks.ToString("x");
+                httpWebRequest.ContentType = $"multipart/form-data; boundary={Boundary}";
+                var stringBuilder = new StringBuilder();
+                stringBuilder.Append(MultiFormData("method", "post", Boundary));
+                stringBuilder.Append(MultiFormData("key", Key, Boundary));
+                stringBuilder.Append(MultiFormData("soft_id", "524", Boundary));
+                if (Parameters.Count > 0)
+                {
+                    foreach (Param obj in Parameters.GetParams())
+                        stringBuilder.Append(MultiFormData(obj.Key, obj.Value, Boundary));
+                }
+                stringBuilder.Append(MultiFormDataFile("file", Encoding.Default.GetString(ImageData), "image.png",
+                    "image/png", Boundary));
+                stringBuilder.Append("--").Append(Boundary).Append("--\r\n\r\n");
+                var bytes = Encoding.Default.GetBytes(stringBuilder.ToString());
+                httpWebRequest.ContentLength = bytes.Length;
+                httpWebRequest.GetRequestStream().Write(bytes, 0, bytes.Length);
+                try
+                {
+                    using (var streamReader = new StreamReader(httpWebRequest.GetResponse().GetResponseStream()))
+                    {
+                        str = streamReader.ReadToEnd().Trim();
+                        streamReader.Close();
+                    }
+                }
+                catch
+                {
+                    throw new WebException("Antigate server did not respond");
+                }
+                if (str.Equals("ERROR_NO_SLOT_AVAILABLE", StringComparison.InvariantCultureIgnoreCase))
+                {
+                    if (num - 1 != 0)
+                    {
+                        --num;
+                        Thread.Sleep(SlotRetryDelay);
+                    }
+                    else
+                        break;
+                }
+                else
+                    goto label_22;
+            }
+            return null;
+            label_22:
+            if (str.StartsWith("ERROR_", StringComparison.InvariantCultureIgnoreCase))
+                throw new AntigateErrorException(
+                    (AntigateError) Enum.Parse(typeof (AntigateError), str.Substring(6)));
             try
             {
-                string str;
-                while (true)
+                CaptchaId = str.Split(new[]
                 {
+                    '|'
+                }, StringSplitOptions.RemoveEmptyEntries)[1];
+            }
+            catch
+            {
+                throw new WebException("Antigate answer is in unknown format or malformed");
+            }
+            for (var index = 0; index < CheckRetryCount; ++index)
+            {
+                try
+                {
+                    Thread.Sleep(CheckDelay);
                     var httpWebRequest =
-                        (HttpWebRequest) WebRequest.Create(string.Format("http://{0}/in.php", (object) ServiceProvider));
+                        (HttpWebRequest)
+                            WebRequest.Create(string.Format("http://{2}/res.php?key={0}&action=get&id={1}",
+                                Key, CaptchaId, ServiceProvider));
                     httpWebRequest.UserAgent = "Antigate.NET";
                     httpWebRequest.Accept = "*/*";
                     httpWebRequest.Headers.Add("Accept-Language", "ru");
                     httpWebRequest.KeepAlive = true;
                     httpWebRequest.AllowAutoRedirect = false;
-                    httpWebRequest.Method = "POST";
-                    var Boundary = DateTime.Now.Ticks.ToString("x");
-                    httpWebRequest.ContentType = string.Format("multipart/form-data; boundary={0}", (object) Boundary);
-                    var stringBuilder = new StringBuilder();
-                    stringBuilder.Append(MultiFormData("method", "post", Boundary));
-                    stringBuilder.Append(MultiFormData("key", Key, Boundary));
-                    stringBuilder.Append(MultiFormData("soft_id", "524", Boundary));
-                    if (Parameters.Count > 0)
+                    httpWebRequest.Method = "GET";
+                    var httpWebResponse = (HttpWebResponse) httpWebRequest.GetResponse();
+                    using (var streamReader = new StreamReader(httpWebResponse.GetResponseStream()))
                     {
-                        foreach (Param obj in (IEnumerable) Parameters.GetParams())
-                            stringBuilder.Append(MultiFormData(obj.Key, obj.Value, Boundary));
+                        str = streamReader.ReadToEnd().Trim();
+                        streamReader.Close();
                     }
-                    stringBuilder.Append(MultiFormDataFile("file", Encoding.Default.GetString(ImageData), "image.png",
-                        "image/png", Boundary));
-                    stringBuilder.Append("--").Append(Boundary).Append("--\r\n\r\n");
-                    var bytes = Encoding.Default.GetBytes(stringBuilder.ToString());
-                    httpWebRequest.ContentLength = (long) bytes.Length;
-                    httpWebRequest.GetRequestStream().Write(bytes, 0, bytes.Length);
-                    try
-                    {
-                        using (var streamReader = new StreamReader(httpWebRequest.GetResponse().GetResponseStream()))
-                        {
-                            str = streamReader.ReadToEnd().Trim();
-                            streamReader.Close();
-                        }
-                    }
-                    catch
-                    {
-                        throw new WebException("Antigate server did not respond");
-                    }
-                    if (str.Equals("ERROR_NO_SLOT_AVAILABLE", StringComparison.InvariantCultureIgnoreCase))
-                    {
-                        if (num - 1 != 0)
-                        {
-                            --num;
-                            Thread.Sleep(SlotRetryDelay);
-                        }
-                        else
-                            break;
-                    }
-                    else
-                        goto label_22;
-                }
-                return (string) null;
-                label_22:
-                if (str.StartsWith("ERROR_", StringComparison.InvariantCultureIgnoreCase))
-                    throw new AntigateErrorException(
-                        (AntigateError) Enum.Parse(typeof (AntigateError), str.Substring(6)));
-                try
-                {
-                    CaptchaId = str.Split(new char[1]
-                    {
-                        '|'
-                    }, StringSplitOptions.RemoveEmptyEntries)[1];
+                    httpWebResponse.Close();
+
+                    if (str.Equals("CAPCHA_NOT_READY", StringComparison.InvariantCultureIgnoreCase)) continue;
+
+                    if (str.StartsWith("ERROR_", StringComparison.InvariantCultureIgnoreCase))
+                        throw new AntigateErrorException(
+                            (AntigateError) Enum.Parse(typeof (AntigateError), str.Substring(6)));
+                    var strArray = str.Split('|');
+                    if (strArray[0].Equals("OK", StringComparison.InvariantCultureIgnoreCase))
+                        return strArray[1];
                 }
                 catch
                 {
-                    throw new WebException("Antigate answer is in unknown format or malformed");
                 }
-                for (var index = 0; index < CheckRetryCount; ++index)
-                {
-                    try
-                    {
-                        Thread.Sleep(CheckDelay);
-                        var httpWebRequest =
-                            (HttpWebRequest)
-                                WebRequest.Create(string.Format("http://{2}/res.php?key={0}&action=get&id={1}",
-                                    (object) Key, (object) CaptchaId, (object) ServiceProvider));
-                        httpWebRequest.UserAgent = "Antigate.NET";
-                        httpWebRequest.Accept = "*/*";
-                        httpWebRequest.Headers.Add("Accept-Language", "ru");
-                        httpWebRequest.KeepAlive = true;
-                        httpWebRequest.AllowAutoRedirect = false;
-                        httpWebRequest.Method = "GET";
-                        var httpWebResponse = (HttpWebResponse) httpWebRequest.GetResponse();
-                        using (var streamReader = new StreamReader(httpWebResponse.GetResponseStream()))
-                        {
-                            str = streamReader.ReadToEnd().Trim();
-                            streamReader.Close();
-                        }
-                        httpWebResponse.Close();
-                        if (!str.Equals("CAPCHA_NOT_READY", StringComparison.InvariantCultureIgnoreCase))
-                        {
-                            if (str.StartsWith("ERROR_", StringComparison.InvariantCultureIgnoreCase))
-                                throw new AntigateErrorException(
-                                    (AntigateError) Enum.Parse(typeof (AntigateError), str.Substring(6)));
-                            var strArray = str.Split('|');
-                            if (strArray[0].Equals("OK", StringComparison.InvariantCultureIgnoreCase))
-                                return strArray[1];
-                        }
-                    }
-                    catch
-                    {
-                    }
-                }
-                return (string) null;
             }
-            catch (Exception ex)
-            {
-                throw ex;
-            }
+            return null;
         }
 
         /// <summary>
@@ -259,8 +251,7 @@ namespace Akumu.Antigate
             {
                 var httpWebRequest =
                     (HttpWebRequest)
-                        WebRequest.Create(string.Format("http://antigate.com/res.php?key={0}&action=reportbad&id={1}",
-                            (object) Key, (object) CaptchaId));
+                        WebRequest.Create($"http://antigate.com/res.php?key={Key}&action=reportbad&id={CaptchaId}");
                 httpWebRequest.UserAgent = "Antigate.NET";
                 httpWebRequest.Accept = "*/*";
                 httpWebRequest.Headers.Add("Accept-Language", "ru");
@@ -286,7 +277,8 @@ namespace Akumu.Antigate
 
         private static string MultiFormData(string Key, string Value, string Boundary)
         {
-            return $"--{(object) Boundary}\r\nContent-Disposition: form-data; name=\"{(object) Key}\"\r\n\r\n{(object) Value}\r\n";
+            return
+                $"--{Boundary}\r\nContent-Disposition: form-data; name=\"{Key}\"\r\n\r\n{Value}\r\n";
         }
 
         private static string MultiFormDataFile(string Key, string Value, string FileName, string FileType,
@@ -295,7 +287,7 @@ namespace Akumu.Antigate
             return
                 string.Format(
                     "--{0}\r\nContent-Disposition: form-data; name=\"{1}\"; filename=\"{3}\"\r\nContent-Type: {4}\r\n\r\n{2}\r\n",
-                    (object) Boundary, (object) Key, (object) Value, (object) FileName, (object) FileType);
+                    Boundary, Key, Value, FileName, FileType);
         }
     }
 }
