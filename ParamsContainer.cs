@@ -6,7 +6,6 @@ namespace Akumu.Antigate
 {
     /// <summary>
     /// Объект коллекции дополнительных параметров API
-    /// 
     /// </summary>
     public class ParamsContainer : ICloneable
     {
@@ -14,13 +13,11 @@ namespace Akumu.Antigate
 
         /// <summary>
         /// Возвращает кол-во параметров в коллекции
-        /// 
         /// </summary>
         public int Count => Params.Count;
 
         /// <summary>
         /// Очистка списка параметров
-        /// 
         /// </summary>
         public void Clear()
         {
@@ -29,9 +26,7 @@ namespace Akumu.Antigate
 
         /// <summary>
         /// Возвращает копию списка
-        /// 
         /// </summary>
-        /// 
         /// <returns/>
         public object Clone()
         {
@@ -43,7 +38,6 @@ namespace Akumu.Antigate
 
         /// <summary>
         /// Добавляет или заменяет парметр в колекцию. Потоко-безопасен.
-        /// 
         /// </summary>
         /// <param name="Key">Ключ</param><param name="Value">Значение</param>
         public void Set(string Key, string Value)
@@ -53,7 +47,6 @@ namespace Akumu.Antigate
 
         /// <summary>
         /// Добавляет или заменяет парметр в колекцию. Потоко-безопасен.
-        /// 
         /// </summary>
         /// <param name="Param">Объект параметра</param>
         private void Set(Param Param)
@@ -66,9 +59,7 @@ namespace Akumu.Antigate
 
         /// <summary>
         /// Возвращает коллекцию параметров
-        /// 
         /// </summary>
-        /// 
         /// <returns/>
         public ICollection GetParams()
         {

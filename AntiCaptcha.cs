@@ -5,6 +5,7 @@ using System.IO;
 using System.Net;
 using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace Akumu.Antigate
 {
@@ -18,53 +19,52 @@ namespace Akumu.Antigate
         /// Set/Get Задержка проверки готовности капчи. Стандартно: 15000. (15 сек.)
         /// 
         /// </summary>
-        private const int CheckDelay = 15000;
+        public int CheckDelay = 15000;
 
         /// <summary>
         /// Set/Get Кол-во попыток проверки готовности капчи. Стандартно: 30
         /// 
         /// </summary>
-        private const int CheckRetryCount = 30;
+        public int CheckRetryCount = 30;
 
         /// <summary>
         /// Set/Get кол-во попыток получения нового слота. Стандартно: 3
         /// 
         /// </summary>
-        private const int SlotRetry = 3;
+        public int SlotRetry = 3;
 
         /// <summary>
         /// Set/Get Задержка повторной попытки получения слота на Antigate. Стандартно: 1000
         /// 
         /// </summary>
-        private const int SlotRetryDelay = 1000;
+        public int SlotRetryDelay = 1000;
 
         /// <summary>
-        /// Сервис антикапчи. Стандартно: antigate.com
+        /// Сервис антикапчи. Стандартно: rucaptcha.com
         /// 
         /// </summary>
-        private const string ServiceProvider = "antigate.com";
-
-        private readonly string Key;
+        public string ServiceProvider = "rucaptcha.com";
 
         /// <summary>
         /// Коллекция дополнительных параметров для API запросов.
         /// 
         /// </summary>
-        private readonly ParamsContainer Parameters;
+        public readonly ParamsContainer Parameters;
 
+        private readonly string Key;
         private string CaptchaId;
 
         /// <summary>
         /// Инициализирует объект AntiCapcha
         /// 
         /// </summary>
-        /// <param name="Key">Ваш секретный API ключ</param>
-        public AntiCaptcha(string Key)
+        /// <param name="key">Ваш секретный API ключ</param>
+        public AntiCaptcha(string key)
         {
-            if (string.IsNullOrEmpty(Key))
+            if (string.IsNullOrEmpty(key))
                 throw new ArgumentException("Antigate Key is null or empty");
             Parameters = new ParamsContainer();
-            this.Key = Key;
+            Key = key;
         }
 
         /// <summary>
@@ -72,13 +72,14 @@ namespace Akumu.Antigate
         /// 
         /// </summary>
         /// <param name="ImageFilePath">Путь к файлу изображения</param>
+        /// <param name="ct">CancellationToken</param>
         /// <returns>
         /// Разгаданный текст капчи или [null] в случае отсутствия свободных слотов или превышения времени ожидания
         /// </returns>
-        public string GetAnswer(string ImageFilePath)
+        public async Task<string> GetAnswer(string ImageFilePath, CancellationToken ct)
         {
             if (string.IsNullOrEmpty(ImageFilePath))
-                throw new ArgumentNullException("Image file path is not set");
+                throw new ArgumentNullException(nameof(ImageFilePath));
             if (!File.Exists(ImageFilePath))
                 throw new ArgumentException("Image file does not exist");
             byte[] ImageData;
@@ -88,7 +89,7 @@ namespace Akumu.Antigate
                 {
                     using (var memoryStream = new MemoryStream())
                     {
-                        image.Save(memoryStream, ImageFormat.Png);
+                        image.Save(memoryStream, ImageFormat.Jpeg);
                         ImageData = memoryStream.ToArray();
                     }
                 }
@@ -97,7 +98,7 @@ namespace Akumu.Antigate
             {
                 throw new ArgumentException("Image has unknown file format");
             }
-            return GetAnswer(ImageData);
+            return await GetAnswer(ImageData, ct);
         }
 
         /// <summary>
@@ -105,8 +106,9 @@ namespace Akumu.Antigate
         /// 
         /// </summary>
         /// <param name="Img"/>
+        /// <param name="ct">CancellationToken</param>
         /// <returns/>
-        public string GetAnswer(Image Img)
+        public async Task<string> GetAnswer(Image Img, CancellationToken ct)
         {
             byte[] ImageData;
             using (var memoryStream = new MemoryStream())
@@ -114,7 +116,7 @@ namespace Akumu.Antigate
                 Img.Save(memoryStream, ImageFormat.Png);
                 ImageData = memoryStream.ToArray();
             }
-            return GetAnswer(ImageData);
+            return await GetAnswer(ImageData, ct);
         }
 
         /// <summary>
@@ -122,10 +124,11 @@ namespace Akumu.Antigate
         /// 
         /// </summary>
         /// <param name="ImageData">Массив данных изображения (PNG)</param>
+        /// <param name="ct">CancellationToken</param>
         /// <returns>
         /// Разгаданный текст капчи или [null] в случае отсутствия свободных слотов или превышения времени ожидания
         /// </returns>
-        private string GetAnswer(byte[] ImageData)
+        private async Task<string> GetAnswer(byte[] ImageData, CancellationToken ct)
         {
             if (ImageData == null || ImageData.Length == 0)
                 throw new ArgumentException("Image data array is empty");
@@ -134,6 +137,9 @@ namespace Akumu.Antigate
             string str;
             while (true)
             {
+                if(ct.IsCancellationRequested)
+                    ct.ThrowIfCancellationRequested();
+
                 var httpWebRequest =
                     (HttpWebRequest) WebRequest.Create($"http://{ServiceProvider}/in.php");
                 httpWebRequest.UserAgent = "Antigate.NET";
@@ -185,6 +191,7 @@ namespace Akumu.Antigate
                     goto label_22;
             }
             return null;
+
             label_22:
             if (str.StartsWith("ERROR_", StringComparison.InvariantCultureIgnoreCase))
                 throw new AntigateErrorException(
@@ -204,7 +211,8 @@ namespace Akumu.Antigate
             {
                 try
                 {
-                    Thread.Sleep(CheckDelay);
+                    await Task.Delay(CheckDelay, ct);
+
                     var httpWebRequest =
                         (HttpWebRequest)
                             WebRequest.Create(string.Format("http://{2}/res.php?key={0}&action=get&id={1}",
