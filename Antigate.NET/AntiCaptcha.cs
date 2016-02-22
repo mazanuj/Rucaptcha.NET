@@ -153,7 +153,7 @@ namespace Akumu.Antigate
                 var stringBuilder = new StringBuilder();
                 stringBuilder.Append(MultiFormData("method", "post", Boundary));
                 stringBuilder.Append(MultiFormData("key", Key, Boundary));
-                stringBuilder.Append(MultiFormData("soft_id", "524", Boundary));
+                stringBuilder.Append(MultiFormData("soft_id", "1139", Boundary));
                 if (Parameters.Count > 0)
                 {
                     foreach (Param obj in Parameters.GetParams())
