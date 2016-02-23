@@ -2,7 +2,7 @@
 using System.IO;
 using System.Net;
 
-namespace Akumu.Antigate.Tools
+namespace Akumu.Rucaptcha.Tools
 {
     /// <summary>
     /// Класс объекта капчи reCAPCHA.

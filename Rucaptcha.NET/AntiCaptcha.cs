@@ -7,10 +7,10 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Akumu.Antigate
+namespace Akumu.Rucaptcha
 {
     /// <summary>
-    /// Класс реализует работу с сервисом antigate.com
+    /// Класс реализует работу с сервисом rucaptcha.com
     /// 
     /// </summary>
     public class AntiCaptcha
@@ -34,7 +34,7 @@ namespace Akumu.Antigate
         public int SlotRetry = 3;
 
         /// <summary>
-        /// Set/Get Задержка повторной попытки получения слота на Antigate. Стандартно: 1000
+        /// Set/Get Задержка повторной попытки получения слота на Rucaptcha. Стандартно: 1000
         /// 
         /// </summary>
         public int SlotRetryDelay = 1000;
@@ -62,7 +62,7 @@ namespace Akumu.Antigate
         public AntiCaptcha(string key)
         {
             if (string.IsNullOrEmpty(key))
-                throw new ArgumentException("Antigate Key is null or empty");
+                throw new ArgumentException("Rucaptcha Key is null or empty");
             Parameters = new ParamsContainer();
             Key = key;
         }
@@ -142,7 +142,7 @@ namespace Akumu.Antigate
 
                 var httpWebRequest =
                     (HttpWebRequest) WebRequest.Create($"http://{ServiceProvider}/in.php");
-                httpWebRequest.UserAgent = "Antigate.NET";
+                httpWebRequest.UserAgent = "Rucaptcha.NET";
                 httpWebRequest.Accept = "*/*";
                 httpWebRequest.Headers.Add("Accept-Language", "ru");
                 httpWebRequest.KeepAlive = true;
@@ -175,7 +175,7 @@ namespace Akumu.Antigate
                 }
                 catch
                 {
-                    throw new WebException("Antigate server did not respond");
+                    throw new WebException("Rucaptcha server did not respond");
                 }
                 if (str.Equals("ERROR_NO_SLOT_AVAILABLE", StringComparison.InvariantCultureIgnoreCase))
                 {
@@ -194,7 +194,7 @@ namespace Akumu.Antigate
 
             label_22:
             if (str.StartsWith("ERROR_", StringComparison.InvariantCultureIgnoreCase))
-                throw new AntigateErrorException(
+                throw new RucaptchaErrorException(
                     (RucaptchaError) Enum.Parse(typeof (RucaptchaError), str.Substring(6)));
             try
             {
@@ -205,7 +205,7 @@ namespace Akumu.Antigate
             }
             catch
             {
-                throw new WebException("Antigate answer is in unknown format or malformed");
+                throw new WebException("Rucaptcha answer is in unknown format or malformed");
             }
             for (var index = 0; index < CheckRetryCount; ++index)
             {
@@ -217,7 +217,7 @@ namespace Akumu.Antigate
                         (HttpWebRequest)
                             WebRequest.Create(string.Format("http://{2}/res.php?key={0}&action=get&id={1}",
                                 Key, CaptchaId, ServiceProvider));
-                    httpWebRequest.UserAgent = "Antigate.NET";
+                    httpWebRequest.UserAgent = "Rucaptcha.NET";
                     httpWebRequest.Accept = "*/*";
                     httpWebRequest.Headers.Add("Accept-Language", "ru");
                     httpWebRequest.KeepAlive = true;
@@ -234,7 +234,7 @@ namespace Akumu.Antigate
                     if (str.Equals("CAPCHA_NOT_READY", StringComparison.InvariantCultureIgnoreCase)) continue;
 
                     if (str.StartsWith("ERROR_", StringComparison.InvariantCultureIgnoreCase))
-                        throw new AntigateErrorException(
+                        throw new RucaptchaErrorException(
                             (RucaptchaError) Enum.Parse(typeof (RucaptchaError), str.Substring(6)));
                     var strArray = str.Split('|');
                     if (strArray[0].Equals("OK", StringComparison.InvariantCultureIgnoreCase))
@@ -259,8 +259,8 @@ namespace Akumu.Antigate
             {
                 var httpWebRequest =
                     (HttpWebRequest)
-                        WebRequest.Create($"http://antigate.com/res.php?key={Key}&action=reportbad&id={CaptchaId}");
-                httpWebRequest.UserAgent = "Antigate.NET";
+                        WebRequest.Create($"http://Rucaptcha.com/res.php?key={Key}&action=reportbad&id={CaptchaId}");
+                httpWebRequest.UserAgent = "Rucaptcha.NET";
                 httpWebRequest.Accept = "*/*";
                 httpWebRequest.Headers.Add("Accept-Language", "ru");
                 httpWebRequest.KeepAlive = true;

@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Text.RegularExpressions;
 
-namespace Akumu.Antigate.Tools
+namespace Akumu.Rucaptcha.Tools
 {
     /// <summary>
     /// Статический класс с набором инструментов для упрощения работы с ReCaptcha

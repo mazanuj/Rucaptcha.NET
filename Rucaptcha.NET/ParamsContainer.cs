@@ -2,7 +2,7 @@
 using System.Collections;
 using System.Linq;
 
-namespace Akumu.Antigate
+namespace Akumu.Rucaptcha
 {
     /// <summary>
     /// Объект коллекции дополнительных параметров API

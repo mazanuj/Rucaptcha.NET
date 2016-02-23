@@ -1,16 +1,16 @@
 ﻿using System;
 
-namespace Akumu.Antigate
+namespace Akumu.Rucaptcha
 {
     /// <summary>
-    /// Экземпляр исключения выбрасываемого в ситуации, когда Antigate отвечает ERROR сообщением.
+    /// Экземпляр исключения выбрасываемого в ситуации, когда Rucaptcha отвечает ERROR сообщением.
     /// 
     /// </summary>
-    public class AntigateErrorException : Exception
+    public class RucaptchaErrorException : Exception
     {
         private readonly RucaptchaError Error;
 
-        public AntigateErrorException(RucaptchaError Error)
+        public RucaptchaErrorException(RucaptchaError Error)
             : base(VerbalError(Error))
         {
             this.Error = Error;
@@ -32,11 +32,11 @@ namespace Akumu.Antigate
             switch (status)
             {
                 case RucaptchaError.WRONG_USER_KEY:
-                    return "Antigate secret key has invalid format";
+                    return "Rucaptcha secret key has invalid format";
                 case RucaptchaError.KEY_DOES_NOT_EXIST:
-                    return "Wrong antigate secret key";
+                    return "Wrong Rucaptcha secret key";
                 case RucaptchaError.ZERO_BALANCE:
-                    return "Zero antigate balance";
+                    return "Zero Rucaptcha balance";
                 case RucaptchaError.ZERO_CAPTCHA_FILESIZE:
                     return "Image file has zero size";
                 case RucaptchaError.TOO_BIG_CAPTCHA_FILESIZE:

@@ -1,4 +1,4 @@
-﻿namespace Akumu.Antigate
+﻿namespace Akumu.Rucaptcha
 {
     /// <summary>
     /// Объект дополнительного параметра API запроса

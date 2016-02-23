@@ -1,4 +1,4 @@
-﻿namespace Akumu.Antigate
+﻿namespace Akumu.Rucaptcha
 {
     public enum RucaptchaError
     {
