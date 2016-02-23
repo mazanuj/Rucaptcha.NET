@@ -1,6 +1,6 @@
 ﻿namespace Akumu.Antigate
 {
-    public enum AntigateError
+    public enum RucaptchaError
     {
         WRONG_USER_KEY,
         KEY_DOES_NOT_EXIST,

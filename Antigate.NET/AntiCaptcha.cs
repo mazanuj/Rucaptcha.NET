@@ -195,7 +195,7 @@ namespace Akumu.Antigate
             label_22:
             if (str.StartsWith("ERROR_", StringComparison.InvariantCultureIgnoreCase))
                 throw new AntigateErrorException(
-                    (AntigateError) Enum.Parse(typeof (AntigateError), str.Substring(6)));
+                    (RucaptchaError) Enum.Parse(typeof (RucaptchaError), str.Substring(6)));
             try
             {
                 CaptchaId = str.Split(new[]
@@ -235,7 +235,7 @@ namespace Akumu.Antigate
 
                     if (str.StartsWith("ERROR_", StringComparison.InvariantCultureIgnoreCase))
                         throw new AntigateErrorException(
-                            (AntigateError) Enum.Parse(typeof (AntigateError), str.Substring(6)));
+                            (RucaptchaError) Enum.Parse(typeof (RucaptchaError), str.Substring(6)));
                     var strArray = str.Split('|');
                     if (strArray[0].Equals("OK", StringComparison.InvariantCultureIgnoreCase))
                         return strArray[1];
