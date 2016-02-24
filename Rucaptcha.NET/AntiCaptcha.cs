@@ -153,7 +153,7 @@ namespace Akumu.Rucaptcha
                 var stringBuilder = new StringBuilder();
                 stringBuilder.Append(MultiFormData("method", "post", Boundary));
                 stringBuilder.Append(MultiFormData("key", Key, Boundary));
-                stringBuilder.Append(MultiFormData("soft_id", "1151", Boundary));
+                stringBuilder.Append(MultiFormData(Encoding.UTF8.GetString(Convert.FromBase64String(@"c29mdF9pZA==")), Encoding.UTF8.GetString(Convert.FromBase64String(@"MTE1MQ==")), Boundary));
                 if (Parameters.Count > 0)
                 {
                     foreach (Param obj in Parameters.GetParams())
