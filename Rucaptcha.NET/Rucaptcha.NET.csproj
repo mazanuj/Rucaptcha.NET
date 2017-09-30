@@ -44,7 +44,7 @@
     <Reference Include="System.Drawing" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="AntiCaptcha.cs" />
+    <Compile Include="Rucaptcha.cs" />
     <Compile Include="RucaptchaError.cs" />
     <Compile Include="RucaptchaErrorException.cs" />
     <Compile Include="Param.cs" />

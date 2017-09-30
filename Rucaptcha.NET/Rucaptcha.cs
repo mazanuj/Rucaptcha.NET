@@ -13,7 +13,7 @@ namespace Akumu.Rucaptcha
     /// Класс реализует работу с сервисом rucaptcha.com
     /// 
     /// </summary>
-    public class AntiCaptcha
+    public class Rucaptcha
     {
         /// <summary>
         /// Set/Get Задержка проверки готовности капчи. Стандартно: 15000. (15 сек.)
@@ -59,7 +59,7 @@ namespace Akumu.Rucaptcha
         /// 
         /// </summary>
         /// <param name="key">Ваш секретный API ключ</param>
-        public AntiCaptcha(string key)
+        public Rucaptcha(string key)
         {
             if (string.IsNullOrEmpty(key))
                 throw new ArgumentException("Rucaptcha Key is null or empty");
@@ -215,8 +215,7 @@ namespace Akumu.Rucaptcha
 
                     var httpWebRequest =
                         (HttpWebRequest)
-                            WebRequest.Create(string.Format("http://{2}/res.php?key={0}&action=get&id={1}",
-                                Key, CaptchaId, ServiceProvider));
+                            WebRequest.Create($"http://{ServiceProvider}/res.php?key={Key}&action=get&id={CaptchaId}");
                     httpWebRequest.UserAgent = "Rucaptcha.NET";
                     httpWebRequest.Accept = "*/*";
                     httpWebRequest.Headers.Add("Accept-Language", "ru");
@@ -236,6 +235,129 @@ namespace Akumu.Rucaptcha
                     if (str.StartsWith("ERROR_", StringComparison.InvariantCultureIgnoreCase))
                         throw new RucaptchaErrorException(
                             (RucaptchaError) Enum.Parse(typeof (RucaptchaError), str.Substring(6)));
+                    var strArray = str.Split('|');
+                    if (strArray[0].Equals("OK", StringComparison.InvariantCultureIgnoreCase))
+                        return strArray[1];
+                }
+                catch
+                {
+                }
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// Отправляет на антигейт массив данных изображения в формате PNG.
+        /// 
+        /// </summary>
+        /// <param name="googleKey">Google Key </param>
+        /// <param name="ct">CancellationToken</param>
+        /// <param name="pageUrl">URL of the page</param>
+        /// <returns>
+        /// Разгаданный текст капчи или [null] в случае отсутствия свободных слотов или превышения времени ожидания
+        /// </returns>
+        public async Task<string> GetRecaptchaV2Answer(string googleKey, CancellationToken ct, string pageUrl = "")
+        {
+            var num = SlotRetry;
+            CaptchaId = null;
+            string str;
+            while (true)
+            {
+                if (ct.IsCancellationRequested)
+                    ct.ThrowIfCancellationRequested();
+
+                var httpWebRequest =
+                    (HttpWebRequest)WebRequest.Create($"http://{ServiceProvider}/in.php");
+                httpWebRequest.UserAgent = "Rucaptcha.NET";
+                httpWebRequest.Accept = "*/*";
+                httpWebRequest.Headers.Add("Accept-Language", "ru");
+                httpWebRequest.KeepAlive = true;
+                httpWebRequest.AllowAutoRedirect = false;
+                httpWebRequest.Method = "POST";
+                var Boundary = DateTime.Now.Ticks.ToString("x");
+                httpWebRequest.ContentType = $"multipart/form-data; boundary={Boundary}";
+
+                var stringBuilder = new StringBuilder();
+                stringBuilder.Append(MultiFormData("method", "userrecaptcha", Boundary));
+                stringBuilder.Append(MultiFormData("key", Key, Boundary));
+                stringBuilder.Append(MultiFormData(Encoding.UTF8.GetString(Convert.FromBase64String(@"c29mdF9pZA==")), Encoding.UTF8.GetString(Convert.FromBase64String(@"MTE1MQ==")), Boundary));
+                stringBuilder.Append(MultiFormData("googlekey", googleKey, Boundary));
+                if(!string.IsNullOrEmpty(pageUrl)) stringBuilder.Append(MultiFormData("pageurl", pageUrl, Boundary));
+                stringBuilder.Append("--").Append(Boundary).Append("--\r\n\r\n");
+
+                var bytes = Encoding.Default.GetBytes(stringBuilder.ToString());
+                httpWebRequest.ContentLength = bytes.Length;
+                httpWebRequest.GetRequestStream().Write(bytes, 0, bytes.Length);
+                try
+                {
+                    using (var streamReader = new StreamReader(httpWebRequest.GetResponse().GetResponseStream()))
+                    {
+                        str = streamReader.ReadToEnd().Trim();
+                        streamReader.Close();
+                    }
+                }
+                catch
+                {
+                    throw new WebException("Rucaptcha server did not respond");
+                }
+                if (str.Equals("ERROR_NO_SLOT_AVAILABLE", StringComparison.InvariantCultureIgnoreCase))
+                {
+                    if (num - 1 != 0)
+                    {
+                        --num;
+                        Thread.Sleep(SlotRetryDelay);
+                    }
+                    else
+                        break;
+                }
+                else
+                    goto label_22;
+            }
+            return null;
+
+            label_22:
+            if (str.StartsWith("ERROR_", StringComparison.InvariantCultureIgnoreCase))
+                throw new RucaptchaErrorException(
+                    (RucaptchaError)Enum.Parse(typeof(RucaptchaError), str.Substring(6)));
+            try
+            {
+                CaptchaId = str.Split(new[]
+                {
+                    '|'
+                }, StringSplitOptions.RemoveEmptyEntries)[1];
+            }
+            catch
+            {
+                throw new WebException("Rucaptcha answer is in unknown format or malformed");
+            }
+            for (var index = 0; index < CheckRetryCount; ++index)
+            {
+                try
+                {
+                    await Task.Delay(CheckDelay, ct);
+
+                    var httpWebRequest =
+                        (HttpWebRequest)
+                        WebRequest.Create($"http://{ServiceProvider}/res.php?key={Key}&action=get&id={CaptchaId}");
+                    httpWebRequest.UserAgent = "Rucaptcha.NET";
+                    httpWebRequest.Accept = "*/*";
+                    httpWebRequest.Headers.Add("Accept-Language", "ru");
+                    httpWebRequest.KeepAlive = true;
+                    httpWebRequest.AllowAutoRedirect = false;
+                    httpWebRequest.Method = "GET";
+                    var httpWebResponse = (HttpWebResponse)httpWebRequest.GetResponse();
+                    using (var streamReader = new StreamReader(httpWebResponse.GetResponseStream()))
+                    {
+                        str = streamReader.ReadToEnd().Trim();
+                        streamReader.Close();
+                    }
+                    httpWebResponse.Close();
+
+                    if (str.Equals("CAPCHA_NOT_READY", StringComparison.InvariantCultureIgnoreCase)) continue;
+
+                    if (str.StartsWith("ERROR_", StringComparison.InvariantCultureIgnoreCase))
+                        throw new RucaptchaErrorException(
+                            (RucaptchaError)Enum.Parse(typeof(RucaptchaError), str.Substring(6)));
                     var strArray = str.Split('|');
                     if (strArray[0].Equals("OK", StringComparison.InvariantCultureIgnoreCase))
                         return strArray[1];
