@@ -4,8 +4,6 @@ VisualStudioVersion = 14.0.24720.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Rucaptcha.NET", "Rucaptcha.NET\Rucaptcha.NET.csproj", "{62601D23-AFA4-4F56-AAFE-6E951D234D8A}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Test", "Test\Test.csproj", "{90ECC103-E403-4EF5-AADD-4A2FB3B291F6}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
